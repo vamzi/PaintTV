@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+    <head>
+       <title>NODE-SOCKET test Example</title>
+    </head>
+
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.5/socket.io.min.js"></script>
+<script>
+  var socket = io.connect();
+  socket.on('news', function (data) {
+    console.log(data);
+    socket.emit('my other event', { my: 'data' });
+  });
+</script>
+    <body>
+        
+       <div id="test-controller">TESTING</div>
+
+    </body>
+</html>

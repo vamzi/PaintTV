@@ -1,0 +1,204 @@
+<head><title>Paint App HTML5</title>
+<style>
+html, body {
+	width: 100%;
+	height: 80%;
+}
+
+#sketch {
+	border: 10px solid gray;
+	height: 100%;
+	position: relative;
+}
+
+#tmp_canvas {
+	position: absolute;
+	left: 0px; right: 0;
+	bottom: 0; top: 0;
+	cursor: crosshair;
+}
+.center {
+    margin: auto;
+    width: 60%;
+    border: 3px solid #73AD21;
+    padding: 10px;
+}
+.right {
+    float: right;
+    width: 30px;
+    height:80%;
+    border: 0px solid #73AD21;
+    padding: 100px;
+}
+.button {
+    width:100px;
+    background-color: black; /* Green */
+    border: none;
+    color: white;
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.5/socket.io.min.js"></script>
+<script src="/js/socket.io-stream.js"></script>
+<script type="text/javascript" src="/js/PxLoader.js"></script>
+<script type="text/javascript" src="/js/PxLoaderImage.js"></script>
+
+<script>
+
+
+var tmp_ctx;
+var stroke_size=10;
+var stroke_color="blue";
+
+function Download(url) {
+
+    document.getElementById('my_iframe').src = url;
+};
+
+function init() {
+console.log('trigerred');
+  	var socket = io.connect();
+   
+	  
+	var canvas = document.querySelector('#paint');
+	var ctx = canvas.getContext('2d');
+	
+	var sketch = document.querySelector('#sketch');
+	var sketch_style = getComputedStyle(sketch);
+	canvas.width = parseInt(sketch_style.getPropertyValue('width'));
+	canvas.height = parseInt(sketch_style.getPropertyValue('height'));
+	
+	
+	// Creating a tmp canvas
+	var tmp_canvas = document.createElement('canvas');
+	 tmp_ctx = tmp_canvas.getContext('2d');
+	tmp_canvas.id = 'tmp_canvas';
+	tmp_canvas.width = canvas.width;
+	tmp_canvas.height = canvas.height;
+	
+	sketch.appendChild(tmp_canvas);
+
+	var mouse = {x: 0, y: 0};
+	var last_mouse = {x: 0, y: 0};
+	
+	// Pencil Points
+	var ppts = [];
+
+	/* Mouse Capturing Work */
+
+	
+	
+	/* Drawing on Paint App */
+	tmp_ctx.lineWidth = stroke_size;
+	tmp_ctx.lineJoin = 'round';
+	tmp_ctx.lineCap = 'round';
+	tmp_ctx.strokeStyle = stroke_color;
+	tmp_ctx.fillStyle = stroke_color;
+	
+	
+
+	
+	var onPaint = function() {
+		
+		// Saving all the points in an array
+	//	ppts.push({x: mouse.x, y: mouse.y});
+	//sending points
+		
+		
+		if (ppts.length < 3) {
+			var b = ppts[0];
+			tmp_ctx.beginPath();
+			//ctx.moveTo(b.x, b.y);
+			//ctx.lineTo(b.x+50, b.y+50);
+			tmp_ctx.arc(b.x, b.y, tmp_ctx.lineWidth / 2, 0, Math.PI * 2, !0);
+			tmp_ctx.fill();
+			tmp_ctx.closePath();
+			
+			return;
+		}
+		
+		// Tmp canvas is always cleared up before drawing.
+	//	tmp_ctx.clearRect(0, 0, tmp_canvas.width, tmp_canvas.height);
+		
+		tmp_ctx.beginPath();
+		tmp_ctx.moveTo(ppts[0].x, ppts[0].y);
+		
+		for (var i = 1; i < ppts.length - 2; i++) {
+			var c = (ppts[i].x + ppts[i + 1].x) / 2;
+			var d = (ppts[i].y + ppts[i + 1].y) / 2;
+			
+			tmp_ctx.quadraticCurveTo(ppts[i].x, ppts[i].y, c, d);
+		}
+		
+		// For the last 2 points
+		tmp_ctx.quadraticCurveTo(
+			ppts[i].x,
+			ppts[i].y,
+			ppts[i + 1].x,
+			ppts[i + 1].y
+		);
+		tmp_ctx.stroke();
+		
+			ctx.drawImage(tmp_canvas, 0, 0);
+		// Clearing tmp canvas
+		tmp_ctx.clearRect(0, 0, tmp_canvas.width, tmp_canvas.height);
+		
+		// Emptying up Pencil Points
+		ppts = [];
+		
+	};
+	
+	 socket.on('pptsdown',function(data){
+	ppts=data;
+	onPaint();
+	});
+		 socket.on('strokedown',function(data){
+	 stroke_size=data.size;
+	 stroke_color=data.color;
+	 	tmp_ctx.lineWidth = stroke_size;
+	 	tmp_ctx.strokeStyle = stroke_color;
+		tmp_ctx.fillStyle = stroke_color;
+	});
+	 socket.on('clrcd',function(data){
+	 console.log(data);	
+	 	ctx.clearRect(0, 0, canvas.width, canvas.height);		
+	});
+	socket.on("file-down", function(data) {
+			console.log("received:"+data.name+',Size:'+data.size);
+			var im=document.getElementById("test");
+		
+			 im.onload = function() {
+         ctx.drawImage(im,0,0);
+    }
+    	im.src='https://paint-app-vamzi.c9users.io/images/'+data.name;
+			var loader = new PxLoader(), 
+    		backgroundImg = loader.addImage('https://paint-app-vamzi.c9users.io/images/'+data.name);
+    		loader.addCompletionListener(function() { 
+				ctx.drawImage(backgroundImg,0,0);
+    			
+    		}); 
+ 
+		// begin downloading images 
+		loader.start(); 
+			
+	});
+
+
+
+
+}
+window.onload=init;
+</script>
+</head>
+<body bgcolor="black">
+<img id="test" width="0" height="0"/>
+<div class="center">
+	<div id="sketch" width="500" height="500">
+		<canvas id="paint" width="500" height="500"></canvas>
+	</div>
+</div>
+</body>
